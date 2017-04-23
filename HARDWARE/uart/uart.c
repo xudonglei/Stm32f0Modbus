@@ -37,28 +37,30 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart)
 	HAL_NVIC_SetPriority(USART1_IRQn,1,0);
 }
 
-uint8_t CRC_counter;
-tModbusRecStruct ModbusRec;
+T_ModbusStruct tModbusStruct;
 void USART1_IRQHandler(void)
 {
 	uint8_t res;
 	if((__HAL_UART_GET_FLAG(&UART1_Handler,UART_FLAG_RXNE)!=RESET))
 	{
-		if(ModbusRec.RecEndFlag != SET)
+		if(tModbusStruct.RecEndFlag != SET)
 		{
-			if(ModbusRec.RecLen <255)
+			if(tModbusStruct.RecLen < MAXRECLEN)
 			{
 				HAL_UART_Receive(&UART1_Handler,&res,1,1000);
-				ModbusRec.RecData[ModbusRec.RecLen++]=res;
+				tModbusStruct.RecData[tModbusStruct.RecLen++]=res;
 			}
 		}
 	}
 	if((__HAL_UART_GET_FLAG(&UART1_Handler,UART_FLAG_RTOF)!=RESET))
 	{   
-		USART1->ICR |= 0x00000800;       //Clear RTOF interrupt flag
-		ModbusRec.RecEndFlag=SET;        //Receive complete       
-		CRC_counter = ModbusRec.RecLen;  //Crc check counter assignment
-        ModbusRec.RecLen = 0;            //Receive counter clear
+		USART1->ICR |= 0x00000800;          //Clear RTOF interrupt flag
+		tModbusStruct.RecEndFlag=SET;        //Receive complete       
 	}
-	HAL_UART_IRQHandler(&UART1_Handler);
+	//HAL_UART_IRQHandler(&UART1_Handler);//do not need
+}
+
+void Rs485SendBuf(uint8_t *buf,uint8_t len)
+{
+	HAL_UART_Transmit(&UART1_Handler, buf, len, 1000);
 }
